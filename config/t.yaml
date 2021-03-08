@@ -1,0 +1,48 @@
+apiVersion: db.secyu.com/v1
+kind: Redis
+metadata:
+  name: test-redis
+spec:
+  mode: cluster
+  size: 3
+  global:
+    image: 'quay.io/opstree/redis:v6.2'
+    imagePullPolicy: IfNotPresent
+    password: Opstree@1234
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  master:
+    service:
+      type: ClusterIP
+    redisConfig: {}
+  slave:
+    service:
+      type: ClusterIP
+    redisConfig: {}
+  service:
+    type: ClusterIP
+  redisConfig: {}
+  redisExporter:
+    enabled: true
+    image: 'quay.io/opstree/redis-exporter:1.0'
+    imagePullPolicy: Always
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
