@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +64,9 @@ func (r *RedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	instance := &redisv1.Redis{}
 
 	err := r.Client.Get(context.TODO(), req.NamespacedName, instance)
+
 	if err != nil {
+		fmt.Println("Reconciling controller finished...", err)
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -129,6 +132,6 @@ func (r *RedisReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 // SetupWithManager sets up the controller with the Manager.
 func (r *RedisReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&redisv1.Redis{}).
+		For(&redisv1.Redis{}). //添加监听redis对象create / delete / update事件，相当于添加：Watches(&source.Kind{Type: apiType}, &handler.EnqueueRequestForObject{})
 		Complete(r)
 }

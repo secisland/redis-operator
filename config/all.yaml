@@ -1672,6 +1672,7 @@ rules:
   - secrets
   - statefulsets
   - services
+  - pods/exec
   verbs:
   - create
   - delete

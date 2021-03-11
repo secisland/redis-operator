@@ -5,15 +5,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/go-redis/redis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	redisv1 "redis-operator/api/v1"
-	"strconv"
-	"strings"
 )
 
 // RedisDetails will hold the information for Redis Pod
@@ -157,8 +158,8 @@ func ExecuteCommand(cr *redisv1.Redis, cmd []string) {
 	)
 
 	reqLogger := log.WithValues("Request.Namespace", cr.Namespace, "Request.Name", cr.ObjectMeta.Name)
-	config, _ := rest.InClusterConfig()
-	//config, _ := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
+	//config, _ := rest.InClusterConfig()
+	config, _ := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
 
 	pod, err := GenerateK8sClient().CoreV1().Pods(cr.Namespace).Get(context.TODO(), cr.ObjectMeta.Name+"-master-0", metav1.GetOptions{})
 
