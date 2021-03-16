@@ -12,9 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	redisv1 "redis-operator/api/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // RedisDetails will hold the information for Redis Pod
@@ -34,7 +34,7 @@ func GetRedisServerIP(redisInfo RedisDetails) string {
 }
 
 // ExecuteRedisClusterCommand will execute redis cluster creation command
-func ExecuteRedisClusterCommand(cr *redisv1.Redis) {
+func ExecuteRedisClusterCommand(cr *redisv1.Redis) error {
 	reqLogger := log.WithValues("Request.Namespace", cr.Namespace, "Request.Name", cr.ObjectMeta.Name)
 	replicas := cr.Spec.Size
 	cmd := []string{
@@ -55,7 +55,7 @@ func ExecuteRedisClusterCommand(cr *redisv1.Redis) {
 		cmd = append(cmd, *cr.Spec.GlobalConfig.Password)
 	}
 	reqLogger.Info("Redis cluster creation command is", "Command", cmd)
-	ExecuteCommand(cr, cmd)
+	return ExecuteCommand(cr, cmd)
 }
 
 // CreateRedisReplicationCommand will create redis replication creation command
@@ -87,12 +87,16 @@ func CreateRedisReplicationCommand(cr *redisv1.Redis, nodeNumber string) []strin
 }
 
 // ExecuteRedisReplicationCommand will execute the replication command
-func ExecuteRedisReplicationCommand(cr *redisv1.Redis) {
+func ExecuteRedisReplicationCommand(cr *redisv1.Redis) error {
 	replicas := cr.Spec.Size
 	for podCount := 0; podCount <= int(*replicas)-1; podCount++ {
 		cmd := CreateRedisReplicationCommand(cr, strconv.Itoa(podCount))
-		ExecuteCommand(cr, cmd)
+		err := ExecuteCommand(cr, cmd)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // CheckRedisCluster will check the redis cluster have sufficient nodes or not
@@ -151,7 +155,7 @@ func CheckRedisCluster(cr *redisv1.Redis) int {
 }
 
 // ExecuteCommand will execute the commands in pod
-func ExecuteCommand(cr *redisv1.Redis, cmd []string) {
+func ExecuteCommand(cr *redisv1.Redis, cmd []string) error {
 	var (
 		execOut bytes.Buffer
 		execErr bytes.Buffer
@@ -159,7 +163,8 @@ func ExecuteCommand(cr *redisv1.Redis, cmd []string) {
 
 	reqLogger := log.WithValues("Request.Namespace", cr.Namespace, "Request.Name", cr.ObjectMeta.Name)
 	//config, _ := rest.InClusterConfig()
-	config, _ := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
+	//config, _ := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
+	config := ctrl.GetConfigOrDie()
 
 	pod, err := GenerateK8sClient().CoreV1().Pods(cr.Namespace).Get(context.TODO(), cr.ObjectMeta.Name+"-master-0", metav1.GetOptions{})
 
@@ -206,4 +211,5 @@ func ExecuteCommand(cr *redisv1.Redis, cmd []string) {
 		reqLogger.Error(err, "Could not execute command")
 	}
 	reqLogger.Info("Successfully executed the command", "Command", cmd, "Output", execOut.String())
+	return err
 }

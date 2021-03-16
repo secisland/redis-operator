@@ -20,14 +20,9 @@ import (
 	"flag"
 	"os"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -69,6 +64,11 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// 初始controllerManager实例：
+	//		Create the cache for the cached read client and registering informers, Cache为 informerCache类型的结构体
+	// 		controllerManager实现了Runnable接口;
+	// 		controllerManager具有SetFields方法(用于把cm的一些属性注入给其他对象)；
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -81,42 +81,17 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-	r := &controllers.RedisReconciler{
+
+	if err = (&controllers.RedisReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Redis"),
 		Scheme: mgr.GetScheme(),
-	}
-
-	c, err := controller.New("redisops", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		setupLog.Error(err, "创建控制器失败", "controller", "redisops")
-		os.Exit(1)
-	}
-
-	err = c.Watch(&source.Kind{Type: &v1.Pod{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		setupLog.Error(err, "监控Pod事件失败", "controll.watch", "pod")
-	}
-
-	//// Watch for changes to primary resource KafkaTopic
-	//err = c.Watch(&source.Kind{Type: &v1alpha1.KafkaTopic{}}, &handler.EnqueueRequestForObject{})
-	//if err != nil {
-	//	return err
-	//}
-
-	if err = r.SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr); err != nil { // SetupWithManager(mgr) 使用controllerManager设置 controller
+		// 构建建一个 builder实例，并添加watch事件
 		setupLog.Error(err, "unable to create controller", "controller", "Redis")
 		os.Exit(1)
 	}
 
-	//if err = (&controllers.RedisReconciler{
-	//	Client: mgr.GetClient(),
-	//	Log:    ctrl.Log.WithName("controllers").WithName("Redis"),
-	//	Scheme: mgr.GetScheme(),
-	//}).SetupWithManager(mgr); err != nil {
-	//	setupLog.Error(err, "unable to create controller", "controller", "Redis")
-	//	os.Exit(1)
-	//}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {

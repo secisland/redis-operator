@@ -2,18 +2,19 @@ package k8sutils
 
 import (
 	"fmt"
-
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // GenerateK8sClient create client for kubernetes
 func GenerateK8sClient() *kubernetes.Clientset {
 	//config, err := rest.InClusterConfig()
-	config, err := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
+	//config, err := clientcmd.BuildConfigFromFlags("", "/Users/shifu/.kube/config")
+	config := ctrl.GetConfigOrDie()
+
+	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		fmt.Println("Error building kubeconfig:", err.Error())
+		fmt.Println("Error building k8s clientset:", err.Error())
 	}
-	clientset, _ := kubernetes.NewForConfig(config)
 	return clientset
 }
